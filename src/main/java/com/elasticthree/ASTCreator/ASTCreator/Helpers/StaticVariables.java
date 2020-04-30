@@ -3,6 +3,7 @@ package com.elasticthree.ASTCreator.ASTCreator.Helpers;
 public class StaticVariables {
 
 	public static final String fileNodeName = "File";
+	public static final String fileNodeArtifactId = "moduleArtifactId";
 	public static final String packagePropertyName = "package";
 	public static final String namePropertyName = "name";
 	public static final String numberOfClassesPropertyName = "numberOfClasses";

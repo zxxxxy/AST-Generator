@@ -12,9 +12,12 @@ public class FileNodeAST {
 	private long numberOfInterfaces;
 	private List<ClassNodeAST> classes;
 	private List<InterfaceNodeAST> interfaces;
+	private String absPathToFile;
+	private String artifactId;
 
 	public FileNodeAST(String repoURL, String absPathToFile,
 			String packageName, long numberOfClasses, long numberOfInterfaces) {
+		setAbsPathToFile(absPathToFile);
 		setRepoURL(repoURL);
 		setName(absPathToFile.substring(absPathToFile.lastIndexOf("\\") + 1));
 		setPackageName(packageName);
@@ -22,6 +25,22 @@ public class FileNodeAST {
 		setNumberOfInterfaces(numberOfInterfaces);
 		setClasses(new ArrayList<ClassNodeAST>());
 		setInterfaces(new ArrayList<InterfaceNodeAST>());
+	}
+
+	public void setAbsPathToFile(String absPathToFile_)
+	{
+		this.absPathToFile = absPathToFile_;
+	}
+
+	public String getAbsPathToFile(){
+		return this.absPathToFile;
+	}
+
+	public String getArtifactId(){
+		return this.artifactId;
+	}
+	public void setArtifactId(String artifactId_){
+		this.artifactId=artifactId_;
 	}
 
 	public String getPackageName() {

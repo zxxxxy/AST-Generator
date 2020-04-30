@@ -118,6 +118,8 @@ public class Neo4JDriver {
 						+ ":\'" + fileNodeAST.getRepoURL() + "\',";
 				fileNodeInsertQuery += StaticVariables.packagePropertyName
 						+ ":\'" + fileNodeAST.getPackageName() + "\',";
+				fileNodeInsertQuery += StaticVariables.fileNodeArtifactId
+						+ ":\'" + fileNodeAST.getArtifactId() + "\',";
 				fileNodeInsertQuery += StaticVariables.namePropertyName + ":\'"
 						+ fileNodeAST.getName() + "\',";
 				fileNodeInsertQuery += StaticVariables.numberOfClassesPropertyName

@@ -289,6 +289,19 @@ public class Neo4JInsertClassRelation {
                     }
                 }
 
+                //match file and module
+                fileNodeInsertQuery+="Match(file:File),(module:Module)\n" +
+                        "WHERE file.moduleArtifactId=module.artifactId\n" +
+                        "CREATE UNIQUE (file)-[pertainRelationship:PERTAINS]->(module)\n" +
+                        "RETURN pertainRelationship;";
+                session.run(fileNodeInsertQuery);
+
+                logger.info("Insertion Query: " + fileNodeInsertQuery);
+                resultLog.info(fileNodeInsertQuery);
+
+                //fileNodeInsertQuery = "";
+
+
 //                fileNodeInsertQuery += ";";
 
 
