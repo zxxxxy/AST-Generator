@@ -3,16 +3,22 @@ package com.elasticthree.ASTCreator.ASTCreator.Neo4jDriver;
 import com.elasticthree.ASTCreator.ASTCreator.Helpers.StaticVariables;
 import com.elasticthree.ASTCreator.ASTCreator.Objects.*;
 
+import com.github.javaparser.ast.ImportDeclaration;
+import com.github.javaparser.ast.TypeParameter;
+import com.github.javaparser.ast.body.FieldDeclaration;
+import com.github.javaparser.ast.expr.AnnotationExpr;
+import com.github.javaparser.ast.expr.MemberValuePair;
 import org.apache.log4j.Logger;
-import org.neo4j.driver.v1.AuthTokens;
-import org.neo4j.driver.v1.Driver;
-import org.neo4j.driver.v1.GraphDatabase;
-import org.neo4j.driver.v1.Session;
+import org.neo4j.driver.AuthTokens;
+import org.neo4j.driver.Driver;
+import org.neo4j.driver.GraphDatabase;
+import org.neo4j.driver.Session;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
@@ -38,7 +44,8 @@ public class Neo4JDriver {
 		InputStream input = null;
 
 		try {
-			input = new FileInputStream("resources/config.properties");
+			String projectPath = System.getProperty("user.dir");
+			input = new FileInputStream(projectPath + "/src/main/resources/config.properties");
 			prop.load(input);
 			this.host = prop.getProperty("host");
 			this.usern = prop.getProperty("neo4j_username");
@@ -69,7 +76,7 @@ public class Neo4JDriver {
 
 	/**
 	 * Inserting AST to Neo4J instance through log file
-	 * 
+	 *
 	 * @param query
 	 */
 	public void insertNeo4JDBLogFile(String query) {
@@ -95,7 +102,7 @@ public class Neo4JDriver {
 
 	/**
 	 * Inserting AST to Neo4J instance
-	 * 
+	 *
 	 * @param fileNodeAST
 	 *            (AST root node)
 	 */
@@ -132,6 +139,36 @@ public class Neo4JDriver {
 						+ ""
 						+ "})";
 
+				// imports nodes
+				if (fileNodeAST.getImports().size() > 0) {
+					List<ImportDeclaration> imports = fileNodeAST.getImports();
+					for (int im=0; im<imports.size(); im ++) {
+						String[] filenames = fileNodeAST.getName().split("\\/|\\.");
+						String fileName = filenames[filenames.length-2];
+						fileNodeInsertQuery += ",(";
+						fileNodeInsertQuery +=
+								"imports" + fileNodeAST.getPackageName().replace(".", "T") + "T" + fileName
+										+ String.valueOf(im)
+										+ ":" + StaticVariables.importNodeName + " {";
+						// import node properties
+						fileNodeInsertQuery += StaticVariables.nameParameterPropertyName
+								+ ":\'"
+								+ imports.get(im).getName().toString()
+								+ "\'";
+						fileNodeInsertQuery += "})";
+
+						// RELATION SHIP FILE -> Import
+						fileNodeInsertQuery += ",(" + "f" + ")";
+
+						fileNodeInsertQuery += "-[:"
+								+ StaticVariables.has_importPropertyName
+								+ "]->";
+						fileNodeInsertQuery += "("
+								+ "imports" + fileNodeAST.getPackageName().replace(".", "T") + "T" + fileName
+								+ String.valueOf(im) + ")";
+					}
+				}
+
 				// List of Classes
 				if (fileNodeAST.getNumberOfClasses() > 0) {
 
@@ -142,40 +179,40 @@ public class Neo4JDriver {
 						ClassList.add(classNode.getName());
 
 						fileNodeInsertQuery += ",(";
-						fileNodeInsertQuery += 
-								"class" 
-								+ classNode.getName()
-								+ String.valueOf(i)
-								+ ":" + StaticVariables.classNodeName + " {";
+						fileNodeInsertQuery +=
+								"class"
+										+ classNode.getName()
+										+ String.valueOf(i)
+										+ ":" + StaticVariables.classNodeName + " {";
 						// Class node properties
 						if (classNode.isHasFinalModifier())
 							fileNodeInsertQuery += "hasFinalModifier:\'"
 									+ String.valueOf(classNode
-											.isHasFinalModifier()) + "\',";
+									.isHasFinalModifier()) + "\',";
 						if (classNode.isHasAbstractModifier())
 							fileNodeInsertQuery += "hasAbstractModifier:\'"
 									+ String.valueOf(classNode
-											.isHasAbstractModifier()) + "\',";
+									.isHasAbstractModifier()) + "\',";
 						if (classNode.isHasPrivateModifier())
 							fileNodeInsertQuery += "hasPrivateModifier:\'"
 									+ String.valueOf(classNode
-											.isHasPrivateModifier()) + "\',";
+									.isHasPrivateModifier()) + "\',";
 						if (classNode.isHasPublicModifier())
 							fileNodeInsertQuery += "hasPublicModifier:\'"
 									+ String.valueOf(classNode
-											.isHasPublicModifier()) + "\',";
+									.isHasPublicModifier()) + "\',";
 						if (classNode.isHasProtectedModifier())
 							fileNodeInsertQuery += "hasProtectedModifier:\'"
 									+ String.valueOf(classNode
-											.isHasProtectedModifier()) + "\',";
+									.isHasProtectedModifier()) + "\',";
 						if (classNode.isHasStaticModifier())
 							fileNodeInsertQuery += "hasStaticModifier:\'"
 									+ String.valueOf(classNode
-											.isHasStaticModifier()) + "\',";
+									.isHasStaticModifier()) + "\',";
 						if (classNode.isHasSynchronizeModifier())
 							fileNodeInsertQuery += "hasSynchronizeModifier:\'"
 									+ String.valueOf(classNode
-											.isHasSynchronizeModifier())
+									.isHasSynchronizeModifier())
 									+ "\',";
 						if (!classNode.getExtendsClass().equalsIgnoreCase(
 								"None")) {
@@ -200,26 +237,30 @@ public class Neo4JDriver {
 								+ ":\'" + classNode.getName() + "\'";
 						fileNodeInsertQuery += "})";
 
-						// Annotation Node
+						// Class Level Annotation Node
 						if (classNode.getAnnotations().size() > 0) {
 							for (int j = 0; j < classNode.getAnnotations()
 									.size(); j++) {
 								AnnotationNodeAST annotationNode = classNode
 										.getAnnotations().get(j);
 								fileNodeInsertQuery += ",(";
-								fileNodeInsertQuery += 
-										"class" 
-										+ classNode.getName()
-										+ String.valueOf(i)
-										+ "ann"
-										+ String.valueOf(j) + ":"
-										+ StaticVariables.annotationNodeName
-										+ " {";
+								fileNodeInsertQuery +=
+										"class"
+												+ classNode.getName()
+												+ String.valueOf(i)
+												+ "ann"
+												+ String.valueOf(j) + ":"
+												+ StaticVariables.annotationNodeName
+												+ " {";
 
 								// Annotation node property
 								fileNodeInsertQuery += StaticVariables.nameAnnotationPropertyName
 										+ ":\'"
 										+ annotationNode.getName().replace("\'", "")//.replace("\"", "|")    //将双引号变成|
+										+ "\',";
+								fileNodeInsertQuery += StaticVariables.targetParameterPropertyName
+										+ ":\'"
+										+ "CLASS"
 										+ "\'";
 
 								//annotation add parameters as property
@@ -257,22 +298,182 @@ public class Neo4JDriver {
 								fileNodeInsertQuery += "})";
 
 								// RELATION SHIP CLASS -> ANNOTATION
-								fileNodeInsertQuery += ",(" 
-										+ "class" 
+								fileNodeInsertQuery += ",("
+										+ "class"
 										+ classNode.getName()
-										+ String.valueOf(i) 
+										+ String.valueOf(i)
 										+ ")";
 
 								fileNodeInsertQuery += "-[:"
 										+ StaticVariables.has_annotationPropertyName
 										+ "]->";
-								fileNodeInsertQuery += "(" 
-										+ "class" 
+								fileNodeInsertQuery += "("
+										+ "class"
+										+ classNode.getName()
+										+ String.valueOf(i)
+										+ "ann"
+										+ String.valueOf(j) + ")";
+
+								// RELATION SHIP FILE -> Annotation
+								fileNodeInsertQuery += ",(" + "f" + ")";
+
+								fileNodeInsertQuery += "-[:"
+										+ StaticVariables.has_annotationPropertyName
+										+ "]->";
+								fileNodeInsertQuery += "("
+										+ "class"
 										+ classNode.getName()
 										+ String.valueOf(i)
 										+ "ann"
 										+ String.valueOf(j) + ")";
 							}
+						}
+
+						// all parameter level annotation node ; from class to parameter
+						List<FieldDeclaration> parametersInClass = classNode.getChildClasses();
+						for (int j = 0; j < parametersInClass.size(); j ++) {
+							// all parameters
+							FieldDeclaration parameter = parametersInClass.get(j);
+							ParameterMethodNodeAST parameterMethodNodeAST = new ParameterMethodNodeAST(
+									parameter.getType().toString(),
+									parameter.getVariables().get(0).getId().toString()
+							);
+							fileNodeInsertQuery += ",(";
+							fileNodeInsertQuery +=
+									"class"
+											+ classNode.getName()
+											+ String.valueOf(i)
+											+ "FIELD"
+											+ "param"
+											+ parameterMethodNodeAST.getName()
+											+ String.valueOf(j)
+											+ ":"
+											+ StaticVariables.parameterNodeName
+											+ " {";
+							// Parameter node property
+							fileNodeInsertQuery += StaticVariables.nameParameterPropertyName
+									+ ":\'"
+									+ parameterMethodNodeAST.getName()
+									+ "\',";
+							fileNodeInsertQuery += StaticVariables.typeParameterPropertyName
+									+ ":\'"
+									+ parameterMethodNodeAST.getType()
+									+ "\',";
+							fileNodeInsertQuery += StaticVariables.targetParameterPropertyName
+									+ ":\'"
+									+ "FIELD"
+									+ "\'";
+							fileNodeInsertQuery += "})";
+
+							// RELATION SHIP Class -> Parameter
+							fileNodeInsertQuery += ",("
+									+ "class"
+									+ classNode.getName()
+									+ String.valueOf(i)
+									+ ")";
+
+							fileNodeInsertQuery += "-[:"
+									+ StaticVariables.has_parameterPropertyName
+									+ "]->";
+							fileNodeInsertQuery +=
+									"(class" + classNode.getName()
+											+ String.valueOf(i)
+											+ "FIELD"
+											+ "param"
+											+ parameterMethodNodeAST.getName()
+											+ String.valueOf(j) + ")";
+
+							// parameter level annotation
+							List<AnnotationExpr> annotationExprs =  parameter.getAnnotations();
+							for (int k = 0; k < annotationExprs.size(); k ++) {
+								fileNodeInsertQuery += ",(";
+								fileNodeInsertQuery +=
+										"class" + classNode.getName() + String.valueOf(i) +
+												"parameter" + parameterMethodNodeAST.getName()
+												+ "ann"
+												+ String.valueOf(j)
+												+ String.valueOf(k) + ":"
+												+ StaticVariables.annotationNodeName
+												+ " {";
+
+								// Annotation node property
+								AnnotationExpr annotationExpr = annotationExprs.get(k);
+								fileNodeInsertQuery += StaticVariables.nameAnnotationPropertyName
+										+ ":\'"
+										+ "@" + annotationExpr.getName().toString().replace("\'", "")//.replace("\"", "|")    //将双引号变成|
+										+ "\',";
+								fileNodeInsertQuery += StaticVariables.targetParameterPropertyName
+										+ ":\'"
+										+ "FIELD"
+										+ "\'";
+								//annotation add parameters as property
+								// annotation's parameters
+								fileNodeInsertQuery += ","
+										+ StaticVariables.annotationParameterName
+										+ ":'[";
+								// first one is annotation itself
+								if (annotationExpr.getChildrenNodes().size() > 1) {
+									for(int count=1; count < annotationExpr.getChildrenNodes().size(); count++)
+									{
+										MemberValuePair memberValuePair = (MemberValuePair) annotationExpr.getChildrenNodes().get(count);
+										fileNodeInsertQuery += "{"
+												+ StaticVariables.annotationParameterListKeyWord
+												+":"
+												+"\""
+												+ memberValuePair.getName()
+												+ "\""
+												+ ","
+												+ StaticVariables.annotationParameterListValueWord
+												+ ":"
+//														+ "\""
+												+ memberValuePair.getValue().toString()
+//														+ "\""
+												+ "}";
+										if(count != annotationExpr.getChildrenNodes().size() - 1)
+										{
+											fileNodeInsertQuery+=",";
+										}
+									}
+								}
+								fileNodeInsertQuery += "]'";
+
+								fileNodeInsertQuery += "})";
+								// RELATION SHIP Parameter -> ANNOTATION
+								fileNodeInsertQuery += ",("
+										+ "class"
+										+ classNode.getName()
+										+ String.valueOf(i)
+										+ "FIELD"
+										+ "param"
+										+ parameterMethodNodeAST.getName()
+										+ String.valueOf(j)
+										+ ")";
+
+								fileNodeInsertQuery += "-[:"
+										+ StaticVariables.has_annotationPropertyName
+										+ "]->";
+								fileNodeInsertQuery +=
+										"(class" + classNode.getName() + String.valueOf(i) +
+												"parameter" + parameterMethodNodeAST.getName()
+												+ "ann"
+												+ String.valueOf(j)
+												+ String.valueOf(k) +  ")";
+
+								// RELATION SHIP FILE -> Annotation
+								fileNodeInsertQuery += ",(" + "f" + ")";
+
+								fileNodeInsertQuery += "-[:"
+										+ StaticVariables.has_annotationPropertyName
+										+ "]->";
+								fileNodeInsertQuery += "("
+										+ "class"
+										+ classNode.getName() + String.valueOf(i) +
+										"parameter" + parameterMethodNodeAST.getName()
+										+ "ann"
+										+ String.valueOf(j)
+										+ String.valueOf(k) + ")";
+							}
+
 						}
 
 						// Implements Interface Node
@@ -281,23 +482,23 @@ public class Neo4JDriver {
 								ClassImplementsNodeAST implNode = classNode
 										.getImpl().get(j);
 								fileNodeInsertQuery += ",(";
-								fileNodeInsertQuery += 
-										"class" 
-										+ classNode.getName()
-										+ String.valueOf(i)
-										+ "impl"
-										+ String.valueOf(j)
-										+ ":"
-										+ StaticVariables.implementsInterfaceNodeName
-										+ " {";
+								fileNodeInsertQuery +=
+										"class"
+												+ classNode.getName()
+												+ String.valueOf(i)
+												+ "impl"
+												+ String.valueOf(j)
+												+ ":"
+												+ StaticVariables.implementsInterfaceNodeName
+												+ " {";
 								// Implements Interface node property
 								fileNodeInsertQuery += StaticVariables.implementsInterfacePropertyName
 										+ ":\'" + implNode.getName() + "\'";
 								fileNodeInsertQuery += "})";
 
 								// RELATION SHIP CLASS -> IMPLEMENTS_INTERFACE
-								fileNodeInsertQuery += ",(" 
-										+ "class" 
+								fileNodeInsertQuery += ",("
+										+ "class"
 										+ classNode.getName()
 										+ String.valueOf(i)
 										+ ")";
@@ -305,10 +506,10 @@ public class Neo4JDriver {
 								fileNodeInsertQuery += "-[:"
 										+ StaticVariables.implements_interfacePropertyName
 										+ "]->";
-								fileNodeInsertQuery += "(" 
-										+ "class" 
+								fileNodeInsertQuery += "("
+										+ "class"
 										+ classNode.getName()
-										+ String.valueOf(i) 
+										+ String.valueOf(i)
 										+ "impl"
 										+ String.valueOf(j) + ")";
 							}
@@ -320,48 +521,48 @@ public class Neo4JDriver {
 								ClassHasMethodNodeAST methodNode = classNode
 										.getMethod().get(j);
 								fileNodeInsertQuery += ",(";
-								fileNodeInsertQuery += 
-										"class" 
-										+ classNode.getName()
-										+ String.valueOf(i)
-										+ "method"
-										+ String.valueOf(j) + ":"
-										+ StaticVariables.methodNodeName + " {";
+								fileNodeInsertQuery +=
+										"class"
+												+ classNode.getName()
+												+ String.valueOf(i)
+												+ "method"
+												+ String.valueOf(j) + ":"
+												+ StaticVariables.methodNodeName + " {";
 
 								if (methodNode.isHasFinalModifier())
 									fileNodeInsertQuery += "hasFinalModifier:\'"
 											+ String.valueOf(methodNode
-													.isHasFinalModifier())
+											.isHasFinalModifier())
 											+ "\',";
 								if (methodNode.isHasAbstractModifier())
 									fileNodeInsertQuery += "hasAbstractModifier:\'"
 											+ String.valueOf(methodNode
-													.isHasAbstractModifier())
+											.isHasAbstractModifier())
 											+ "\',";
 								if (methodNode.isHasPrivateModifier())
 									fileNodeInsertQuery += "hasPrivateModifier:\'"
 											+ String.valueOf(methodNode
-													.isHasPrivateModifier())
+											.isHasPrivateModifier())
 											+ "\',";
 								if (methodNode.isHasPublicModifier())
 									fileNodeInsertQuery += "hasPublicModifier:\'"
 											+ String.valueOf(methodNode
-													.isHasPublicModifier())
+											.isHasPublicModifier())
 											+ "\',";
 								if (methodNode.isHasProtectedModifier())
 									fileNodeInsertQuery += "hasProtectedModifier:\'"
 											+ String.valueOf(methodNode
-													.isHasProtectedModifier())
+											.isHasProtectedModifier())
 											+ "\',";
 								if (methodNode.isHasStaticModifier())
 									fileNodeInsertQuery += "hasStaticModifier:\'"
 											+ String.valueOf(methodNode
-													.isHasStaticModifier())
+											.isHasStaticModifier())
 											+ "\',";
 								if (methodNode.isHasSynchronizeModifier())
 									fileNodeInsertQuery += "hasSynchronizeModifier:\'"
 											+ String.valueOf(methodNode
-													.isHasSynchronizeModifier())
+											.isHasSynchronizeModifier())
 											+ "\',";
 
 								fileNodeInsertQuery += StaticVariables.returningTypeMethodPropertyName
@@ -380,29 +581,33 @@ public class Neo4JDriver {
 
 								// Method's RelationShips
 
-								// Annotation Node
+								// Method Level Annotation Node
 								if (methodNode.getAnnotatios().size() > 0) {
 									for (int k = 0; k < methodNode
 											.getAnnotatios().size(); k++) {
 										AnnotationNodeAST annotationNode = methodNode
 												.getAnnotatios().get(k);
 										fileNodeInsertQuery += ",(";
-										fileNodeInsertQuery += 
-												"class" 
-												+ classNode.getName()
-												+ String.valueOf(i)
-												+ "method"
-												+ methodNode.getName()
-												+ String.valueOf(j)
-												+ "ann"
-												+ String.valueOf(k)
-												+ ":"
-												+ StaticVariables.annotationNodeName
-												+ " {";
+										fileNodeInsertQuery +=
+												"class"
+														+ classNode.getName()
+														+ String.valueOf(i)
+														+ "method"
+														+ methodNode.getName()
+														+ String.valueOf(j)
+														+ "ann"
+														+ String.valueOf(k)
+														+ ":"
+														+ StaticVariables.annotationNodeName
+														+ " {";
 										// Annotation node property
 										fileNodeInsertQuery += StaticVariables.nameAnnotationPropertyName
 												+ ":\'"
 												+ annotationNode.getName().replace("\'", "")//.replace("\"", "")
+												+ "\',";
+										fileNodeInsertQuery += StaticVariables.targetParameterPropertyName
+												+ ":\'"
+												+ "METHOD"
 												+ "\'";
 
 										//annotation add parameters as property
@@ -440,8 +645,8 @@ public class Neo4JDriver {
 										fileNodeInsertQuery += "})";
 
 										// RELATION SHIP METHOD -> ANNOTATION
-										fileNodeInsertQuery += ",(" 
-												+ "class" 
+										fileNodeInsertQuery += ",("
+												+ "class"
 												+ classNode.getName()
 												+ String.valueOf(i)
 												+ "method" + String.valueOf(j)
@@ -451,7 +656,22 @@ public class Neo4JDriver {
 												+ StaticVariables.has_annotationPropertyName
 												+ "]->";
 										fileNodeInsertQuery += "("
-												+ "class" 
+												+ "class"
+												+ classNode.getName()
+												+ String.valueOf(i)
+												+ "method"
+												+ methodNode.getName()
+												+ String.valueOf(j) + "ann"
+												+ String.valueOf(k) + ")";
+
+										// RELATION SHIP FILE -> Annotation
+										fileNodeInsertQuery += ",(" + "f" + ")";
+
+										fileNodeInsertQuery += "-[:"
+												+ StaticVariables.has_annotationPropertyName
+												+ "]->";
+										fileNodeInsertQuery += "("
+												+ "class"
 												+ classNode.getName()
 												+ String.valueOf(i)
 												+ "method"
@@ -462,24 +682,22 @@ public class Neo4JDriver {
 								}
 
 								// Parameter Node
-								if (methodNode.getParameters().size() > 0) {
-									for (int k = 0; k < methodNode
-											.getParameters().size(); k++) {
-										ParameterMethodNodeAST paramNode = methodNode
-												.getParameters().get(k);
+								if (methodNode.getParametersMethod().size() > 0) {
+									for (int k = 0; k < methodNode.getParametersMethod().size(); k++) {
+										ParameterNodeAST paramNode = methodNode.getParametersMethod().get(k);
 										fileNodeInsertQuery += ",(";
 										fileNodeInsertQuery +=
-												"class" 
-												+ classNode.getName()
-												+ String.valueOf(i)
-												+ "method"
-												+ methodNode.getName()
-												+ String.valueOf(j)
-												+ "param"
-												+ String.valueOf(k)
-												+ ":"
-												+ StaticVariables.parameterNodeName
-												+ " {";
+												"class"
+														+ classNode.getName()
+														+ String.valueOf(i)
+														+ "method"
+														+ methodNode.getName()
+														+ String.valueOf(j)
+														+ "param"
+														+ String.valueOf(k)
+														+ ":"
+														+ StaticVariables.parameterNodeName
+														+ " {";
 										// Parameter node property
 										fileNodeInsertQuery += StaticVariables.nameParameterPropertyName
 												+ ":\'"
@@ -488,12 +706,16 @@ public class Neo4JDriver {
 										fileNodeInsertQuery += StaticVariables.typeParameterPropertyName
 												+ ":\'"
 												+ paramNode.getType()
+												+ "\',";
+										fileNodeInsertQuery += StaticVariables.targetParameterPropertyName
+												+ ":\'"
+												+ paramNode.getTarget()
 												+ "\'";
 										fileNodeInsertQuery += "})";
 
 										// RELATION SHIP METHOD -> PARAMETER
-										fileNodeInsertQuery += ",(" 
-												+ "class" 
+										fileNodeInsertQuery += ",("
+												+ "class"
 												+ classNode.getName()
 												+ String.valueOf(i)
 												+ "method" + String.valueOf(j)
@@ -502,8 +724,8 @@ public class Neo4JDriver {
 										fileNodeInsertQuery += "-[:"
 												+ StaticVariables.has_parameterPropertyName
 												+ "]->";
-										fileNodeInsertQuery += "(" 
-												+ "class" 
+										fileNodeInsertQuery += "("
+												+ "class"
 												+ classNode.getName()
 												+ String.valueOf(i)
 												+ "method"
@@ -511,8 +733,109 @@ public class Neo4JDriver {
 												+ String.valueOf(j) + "param"
 												+ String.valueOf(k)
 												+ ")";
+
+										// parameter level annotation
+										List<AnnotationExpr> paramAnnotations = paramNode.getAnnotations();
+										if (paramAnnotations.size() > 0) {
+											for (int l = 0; l < paramAnnotations.size(); l ++) {
+												fileNodeInsertQuery += ",(";
+												fileNodeInsertQuery +=
+														"class" + classNode.getName() + String.valueOf(i)
+																+ "VARIABLEPARAM"
+																+ "parameter" + paramNode.getName()
+																+ "ann"
+																+ String.valueOf(j)
+																+ String.valueOf(k)
+																+ String.valueOf(l) + ":"
+																+ StaticVariables.annotationNodeName
+																+ " {";
+												// Annotation node property
+												AnnotationExpr annotationExprParam = paramAnnotations.get(l);
+												fileNodeInsertQuery += StaticVariables.nameAnnotationPropertyName
+														+ ":\'"
+														+ "@" + annotationExprParam.getName().toString().replace("\'", "")//.replace("\"", "|")    //将双引号变成|
+														+ "\',";
+												fileNodeInsertQuery += StaticVariables.targetParameterPropertyName
+														+ ":\'"
+														+ paramNode.getTarget()
+														+ "\'";
+												//annotation add parameters as property
+												// annotation's parameters
+												fileNodeInsertQuery += ","
+														+ StaticVariables.annotationParameterName
+														+ ":'[";
+												// first one is annotation itself
+												if (annotationExprParam.getChildrenNodes().size() > 1) {
+													for(int count=1; count < annotationExprParam.getChildrenNodes().size(); count++)
+													{
+														MemberValuePair memberValuePair = (MemberValuePair) annotationExprParam.getChildrenNodes().get(count);
+														fileNodeInsertQuery += "{"
+																+ StaticVariables.annotationParameterListKeyWord
+																+":"
+																+"\""
+																+ memberValuePair.getName()
+																+ "\""
+																+ ","
+																+ StaticVariables.annotationParameterListValueWord
+																+ ":"
+//														+ "\""
+																+ memberValuePair.getValue().toString()
+//														+ "\""
+																+ "}";
+														if(count != annotationExprParam.getChildrenNodes().size() - 1)
+														{
+															fileNodeInsertQuery+=",";
+														}
+													}
+												}
+												fileNodeInsertQuery += "]'";
+												fileNodeInsertQuery += "})";
+
+												// RELATION SHIP Parameter -> ANNOTATION
+												fileNodeInsertQuery += ",("
+														+ "class"
+														+ classNode.getName()
+														+ String.valueOf(i)
+														+ "method"
+														+ methodNode.getName()
+														+ String.valueOf(j)
+														+ "param"
+														+ String.valueOf(k)
+														+ ")";
+
+												fileNodeInsertQuery += "-[:"
+														+ StaticVariables.has_annotationPropertyName
+														+ "]->";
+												fileNodeInsertQuery +=
+														"(class" + classNode.getName() + String.valueOf(i)
+																+ "VARIABLEPARAM"
+																+ "parameter" + paramNode.getName()
+																+ "ann"
+																+ String.valueOf(j)
+																+ String.valueOf(k)
+																+ String.valueOf(l) + ")";
+
+												// RELATION SHIP FILE -> Annotation
+												fileNodeInsertQuery += ",(" + "f" + ")";
+
+												fileNodeInsertQuery += "-[:"
+														+ StaticVariables.has_annotationPropertyName
+														+ "]->";
+												fileNodeInsertQuery += "("
+														+ "class"
+														+ classNode.getName() + String.valueOf(i)
+														+ "VARIABLEPARAM"
+														+ "parameter" + paramNode.getName()
+														+ "ann"
+														+ String.valueOf(j)
+														+ String.valueOf(k)
+														+ String.valueOf(l) + ")";
+											}
+
+										}
 									}
 								}
+
 
 								// Throw Method Node
 								if (methodNode.getThrowsMethod().size() > 0) {
@@ -521,17 +844,17 @@ public class Neo4JDriver {
 										ThrowMethodNodeAST throwNode = methodNode
 												.getThrowsMethod().get(k);
 										fileNodeInsertQuery += ",(";
-										fileNodeInsertQuery += 
-												"class" 
-												+ classNode.getName()
-												+ String.valueOf(i)
-												+ "method"
-												+ methodNode.getName()
-												+ String.valueOf(j) + "throw"
-												+ String.valueOf(k)
-												+ ":"
-												+ StaticVariables.throwNodeName
-												+ " {";
+										fileNodeInsertQuery +=
+												"class"
+														+ classNode.getName()
+														+ String.valueOf(i)
+														+ "method"
+														+ methodNode.getName()
+														+ String.valueOf(j) + "throw"
+														+ String.valueOf(k)
+														+ ":"
+														+ StaticVariables.throwNodeName
+														+ " {";
 										// Throw node property
 										fileNodeInsertQuery += StaticVariables.nameThrowPropertyName
 												+ ":\'"
@@ -540,8 +863,8 @@ public class Neo4JDriver {
 										fileNodeInsertQuery += "})";
 
 										// RELATION SHIP METHOD -> THROW
-										fileNodeInsertQuery += ",(" 
-												+ "class" 
+										fileNodeInsertQuery += ",("
+												+ "class"
 												+ classNode.getName()
 												+ String.valueOf(i)
 												+ "method" + String.valueOf(j)
@@ -550,8 +873,8 @@ public class Neo4JDriver {
 										fileNodeInsertQuery += "-[:"
 												+ StaticVariables.has_throwPropertyName
 												+ "]->";
-										fileNodeInsertQuery += "(" 
-												+ "class" 
+										fileNodeInsertQuery += "("
+												+ "class"
 												+ classNode.getName()
 												+ String.valueOf(i)
 												+ "method"
@@ -562,8 +885,8 @@ public class Neo4JDriver {
 									}
 								}
 								// RELATION SHIP CLASS -> METHOD
-								fileNodeInsertQuery += ",(" 
-										+ "class" 
+								fileNodeInsertQuery += ",("
+										+ "class"
 										+ classNode.getName()
 										+ String.valueOf(i)
 										+ ")";
@@ -571,12 +894,12 @@ public class Neo4JDriver {
 								fileNodeInsertQuery += "-[:"
 										+ StaticVariables.has_methodPropertyName
 										+ "]->";
-								fileNodeInsertQuery += "(" 
-										+ "class" 
+								fileNodeInsertQuery += "("
+										+ "class"
 										+ classNode.getName()
 										+ String.valueOf(i)
 										+ "method"
-										+ String.valueOf(j) 
+										+ String.valueOf(j)
 										+ ")";
 							}
 						}
@@ -585,7 +908,7 @@ public class Neo4JDriver {
 
 						fileNodeInsertQuery += "-[:"
 								+ StaticVariables.has_classPropertyName + "]->";
-						fileNodeInsertQuery += "(" + "class" 
+						fileNodeInsertQuery += "(" + "class"
 								+ classNode.getName()
 								+ String.valueOf(i) + ")";
 						//////////////////////
@@ -624,40 +947,40 @@ public class Neo4JDriver {
 						InterfaceNodeAST interfaceNode = fileNodeAST
 								.getInterfaces().get(i);
 						fileNodeInsertQuery += ",(";
-						fileNodeInsertQuery += 
+						fileNodeInsertQuery +=
 								"interface"
-								+ interfaceNode.getName()
-								+ String.valueOf(i) + ":"
-								+ StaticVariables.interfaceNodeName + " {";
+										+ interfaceNode.getName()
+										+ String.valueOf(i) + ":"
+										+ StaticVariables.interfaceNodeName + " {";
 						// Class node properties
 						if (interfaceNode.isHasFinalModifier())
 							fileNodeInsertQuery += "hasFinalModifier:\'"
 									+ String.valueOf(interfaceNode
-											.isHasFinalModifier()) + "\',";
+									.isHasFinalModifier()) + "\',";
 						if (interfaceNode.isHasAbstractModifier())
 							fileNodeInsertQuery += "hasAbstractModifier:\'"
 									+ String.valueOf(interfaceNode
-											.isHasAbstractModifier()) + "\',";
+									.isHasAbstractModifier()) + "\',";
 						if (interfaceNode.isHasPrivateModifier())
 							fileNodeInsertQuery += "hasPrivateModifier:\'"
 									+ String.valueOf(interfaceNode
-											.isHasPrivateModifier()) + "\',";
+									.isHasPrivateModifier()) + "\',";
 						if (interfaceNode.isHasPublicModifier())
 							fileNodeInsertQuery += "hasPublicModifier:\'"
 									+ String.valueOf(interfaceNode
-											.isHasPublicModifier()) + "\',";
+									.isHasPublicModifier()) + "\',";
 						if (interfaceNode.isHasProtectedModifier())
 							fileNodeInsertQuery += "hasProtectedModifier:\'"
 									+ String.valueOf(interfaceNode
-											.isHasProtectedModifier()) + "\',";
+									.isHasProtectedModifier()) + "\',";
 						if (interfaceNode.isHasStaticModifier())
 							fileNodeInsertQuery += "hasStaticModifier:\'"
 									+ String.valueOf(interfaceNode
-											.isHasStaticModifier()) + "\',";
+									.isHasStaticModifier()) + "\',";
 						if (interfaceNode.isHasSynchronizeModifier())
 							fileNodeInsertQuery += "hasSynchronizeModifier:\'"
 									+ String.valueOf(interfaceNode
-											.isHasSynchronizeModifier())
+									.isHasSynchronizeModifier())
 									+ "\',";
 						fileNodeInsertQuery += StaticVariables.URLRepoPropertyName
 								+ ":\'" + interfaceNode.getRepoURL() + "\',";
@@ -669,25 +992,29 @@ public class Neo4JDriver {
 								+ ":\'" + interfaceNode.getName() + "\'";
 						fileNodeInsertQuery += "})";
 
-						// Annotation Node
+						// Interface Level Annotation Node
 						if (interfaceNode.getAnnotatios().size() > 0) {
 							for (int j = 0; j < interfaceNode.getAnnotatios()
 									.size(); j++) {
 								AnnotationNodeAST annotationNode = interfaceNode
 										.getAnnotatios().get(j);
 								fileNodeInsertQuery += ",(";
-								fileNodeInsertQuery += 
+								fileNodeInsertQuery +=
 										"interface"
-										+ interfaceNode.getName()
-										+ String.valueOf(i)
-										+ "ann"
-										+ String.valueOf(j) + ":"
-										+ StaticVariables.annotationNodeName
-										+ " {";
+												+ interfaceNode.getName()
+												+ String.valueOf(i)
+												+ "ann"
+												+ String.valueOf(j) + ":"
+												+ StaticVariables.annotationNodeName
+												+ " {";
 								// Annotation node property
 								fileNodeInsertQuery += StaticVariables.nameAnnotationPropertyName
 										+ ":\'"
 										+ annotationNode.getName().replace("\'", "")//.replace("\"", "")
+										+ "\',";
+								fileNodeInsertQuery += StaticVariables.targetParameterPropertyName
+										+ ":\'"
+										+ "INTERFACE"
 										+ "\'";
 
 								//annotation add parameters as property
@@ -724,22 +1051,182 @@ public class Neo4JDriver {
 								fileNodeInsertQuery += "})";
 
 								// RELATION SHIP INTERFACE -> ANNOTATION
-								fileNodeInsertQuery += ",(" 
+								fileNodeInsertQuery += ",("
 										+ "interface"
 										+ interfaceNode.getName()
-										+ String.valueOf(i) 
+										+ String.valueOf(i)
 										+ ")";
 
 								fileNodeInsertQuery += "-[:"
 										+ StaticVariables.has_annotationPropertyName
 										+ "]->";
-								fileNodeInsertQuery += "(" 
+								fileNodeInsertQuery += "("
+										+ "interface"
+										+ interfaceNode.getName()
+										+ String.valueOf(i)
+										+ "ann"
+										+ String.valueOf(j) + ")";
+
+								// RELATION SHIP FILE -> Annotation
+								fileNodeInsertQuery += ",(" + "f" + ")";
+
+								fileNodeInsertQuery += "-[:"
+										+ StaticVariables.has_annotationPropertyName
+										+ "]->";
+								fileNodeInsertQuery += "("
 										+ "interface"
 										+ interfaceNode.getName()
 										+ String.valueOf(i)
 										+ "ann"
 										+ String.valueOf(j) + ")";
 							}
+						}
+
+
+
+						// all parameter level annotation node ; from interface to parameter
+						List<FieldDeclaration> parametersInClass = interfaceNode.getChildClasses();
+						for (int j = 0; j < parametersInClass.size(); j ++) {
+							// all parameters
+							FieldDeclaration parameter = parametersInClass.get(j);
+							ParameterMethodNodeAST parameterMethodNodeAST = new ParameterMethodNodeAST(
+									parameter.getType().toString(),
+									parameter.getVariables().get(0).getId().toString()
+							);
+							fileNodeInsertQuery += ",(";
+							fileNodeInsertQuery +=
+									"interface" + interfaceNode.getName()
+											+ String.valueOf(i)
+											+ "FIELD"
+											+ "param"
+											+ parameterMethodNodeAST.getName()
+											+ String.valueOf(j)
+											+ ":"
+											+ StaticVariables.parameterNodeName
+											+ " {";
+							// Parameter node property
+							fileNodeInsertQuery += StaticVariables.nameParameterPropertyName
+									+ ":\'"
+									+ parameterMethodNodeAST.getName()
+									+ "\',";
+							fileNodeInsertQuery += StaticVariables.typeParameterPropertyName
+									+ ":\'"
+									+ parameterMethodNodeAST.getType()
+									+ "\',";
+							fileNodeInsertQuery += StaticVariables.targetParameterPropertyName
+									+ ":\'"
+									+ "FIELD"
+									+ "\'";
+							fileNodeInsertQuery += "})";
+
+							// RELATION SHIP Class -> Parameter
+							fileNodeInsertQuery += ",("
+									+ "interface"
+									+ interfaceNode.getName()
+									+ String.valueOf(i)
+									+ ")";
+
+							fileNodeInsertQuery += "-[:"
+									+ StaticVariables.has_parameterPropertyName
+									+ "]->";
+							fileNodeInsertQuery += "(" +
+									"interface" + interfaceNode.getName()
+									+ String.valueOf(i)
+									+ "FIELD"
+									+ "param"
+									+ parameterMethodNodeAST.getName()
+									+ String.valueOf(j) + ")";
+
+							// parameter level annotation
+							List<AnnotationExpr> annotationExprs =  parameter.getAnnotations();
+							for (int k = 0; k < annotationExprs.size(); k ++) {
+								fileNodeInsertQuery += ",(";
+								fileNodeInsertQuery +=
+										"interface" + interfaceNode.getName() + String.valueOf(i) +
+												"parameter" + parameterMethodNodeAST.getName()
+												+ "ann"
+												+ String.valueOf(j)
+												+ String.valueOf(k) + ":"
+												+ StaticVariables.annotationNodeName
+												+ " {";
+
+								// Annotation node property
+								AnnotationExpr annotationExpr = annotationExprs.get(k);
+								fileNodeInsertQuery += StaticVariables.nameAnnotationPropertyName
+										+ ":\'"
+										+ "@" + annotationExpr.getName().toString().replace("\'", "")//.replace("\"", "|")    //将双引号变成|
+										+ "\',";
+								fileNodeInsertQuery += StaticVariables.targetParameterPropertyName
+										+ ":\'"
+										+ "FIELD"
+										+ "\'";
+								//annotation add parameters as property
+								// annotation's parameters
+								fileNodeInsertQuery += ","
+										+ StaticVariables.annotationParameterName
+										+ ":'[";
+								// first one is annotation itself
+								if (annotationExpr.getChildrenNodes().size() > 1) {
+									for(int count=1; count < annotationExpr.getChildrenNodes().size(); count++)
+									{
+										MemberValuePair memberValuePair = (MemberValuePair) annotationExpr.getChildrenNodes().get(count);
+										fileNodeInsertQuery += "{"
+												+ StaticVariables.annotationParameterListKeyWord
+												+":"
+												+"\""
+												+ memberValuePair.getName()
+												+ "\""
+												+ ","
+												+ StaticVariables.annotationParameterListValueWord
+												+ ":"
+//														+ "\""
+												+ memberValuePair.getValue().toString()
+//														+ "\""
+												+ "}";
+										if(count != annotationExpr.getChildrenNodes().size() - 1)
+										{
+											fileNodeInsertQuery+=",";
+										}
+									}
+								}
+								fileNodeInsertQuery += "]'";
+
+								fileNodeInsertQuery += "})";
+								// RELATION SHIP Parameter -> ANNOTATION
+								fileNodeInsertQuery += ",("
+										+ "interface"
+										+ interfaceNode.getName()
+										+ String.valueOf(i)
+										+ "FIELD"
+										+ "param"
+										+ parameterMethodNodeAST.getName()
+										+ String.valueOf(j)
+										+ ")";
+
+								fileNodeInsertQuery += "-[:"
+										+ StaticVariables.has_annotationPropertyName
+										+ "]->";
+								fileNodeInsertQuery += "(" +
+										"interface" + interfaceNode.getName() + String.valueOf(i) +
+										"parameter" + parameterMethodNodeAST.getName()
+										+ "ann"
+										+ String.valueOf(j)
+										+ String.valueOf(k) + ")";
+
+								// RELATION SHIP FILE -> Annotation
+								fileNodeInsertQuery += ",(" + "f" + ")";
+
+								fileNodeInsertQuery += "-[:"
+										+ StaticVariables.has_annotationPropertyName
+										+ "]->";
+								fileNodeInsertQuery += "("
+										+ "interface"
+										+ interfaceNode.getName()
+										+ String.valueOf(i)
+										+ "ann"
+										+ String.valueOf(j) + ")";
+							}
+
 						}
 
 						// Method Node
@@ -749,47 +1236,47 @@ public class Neo4JDriver {
 								InterfaceHasMethodNodeAST methodNode = interfaceNode
 										.getMethod().get(j);
 								fileNodeInsertQuery += ",(";
-								fileNodeInsertQuery += 
+								fileNodeInsertQuery +=
 										"interface"
-										+ interfaceNode.getName()
-										+ String.valueOf(i) + "method"
-										+ String.valueOf(j) + ":"
-										+ StaticVariables.methodNodeName + " {";
+												+ interfaceNode.getName()
+												+ String.valueOf(i) + "method"
+												+ String.valueOf(j) + ":"
+												+ StaticVariables.methodNodeName + " {";
 
 								if (methodNode.isHasFinalModifier())
 									fileNodeInsertQuery += "hasFinalModifier:\'"
 											+ String.valueOf(methodNode
-													.isHasFinalModifier())
+											.isHasFinalModifier())
 											+ "\',";
 								if (methodNode.isHasAbstractModifier())
 									fileNodeInsertQuery += "hasAbstractModifier:\'"
 											+ String.valueOf(methodNode
-													.isHasAbstractModifier())
+											.isHasAbstractModifier())
 											+ "\',";
 								if (methodNode.isHasPrivateModifier())
 									fileNodeInsertQuery += "hasPrivateModifier:\'"
 											+ String.valueOf(methodNode
-													.isHasPrivateModifier())
+											.isHasPrivateModifier())
 											+ "\',";
 								if (methodNode.isHasPublicModifier())
 									fileNodeInsertQuery += "hasPublicModifier:\'"
 											+ String.valueOf(methodNode
-													.isHasPublicModifier())
+											.isHasPublicModifier())
 											+ "\',";
 								if (methodNode.isHasProtectedModifier())
 									fileNodeInsertQuery += "hasProtectedModifier:\'"
 											+ String.valueOf(methodNode
-													.isHasProtectedModifier())
+											.isHasProtectedModifier())
 											+ "\',";
 								if (methodNode.isHasStaticModifier())
 									fileNodeInsertQuery += "hasStaticModifier:\'"
 											+ String.valueOf(methodNode
-													.isHasStaticModifier())
+											.isHasStaticModifier())
 											+ "\',";
 								if (methodNode.isHasSynchronizeModifier())
 									fileNodeInsertQuery += "hasSynchronizeModifier:\'"
 											+ String.valueOf(methodNode
-													.isHasSynchronizeModifier())
+											.isHasSynchronizeModifier())
 											+ "\',";
 
 								fileNodeInsertQuery += StaticVariables.returningTypeMethodPropertyName
@@ -808,29 +1295,33 @@ public class Neo4JDriver {
 
 								// Method's RelationShips
 
-								// Annotation Node
+								// Method Level Annotation Node
 								if (methodNode.getAnnotatios().size() > 0) {
 									for (int k = 0; k < methodNode
 											.getAnnotatios().size(); k++) {
 										AnnotationNodeAST annotationNode = methodNode
 												.getAnnotatios().get(k);
 										fileNodeInsertQuery += ",(";
-										fileNodeInsertQuery += 
+										fileNodeInsertQuery +=
 												"interface"
-												+ interfaceNode.getName()
-												+ String.valueOf(i)
-												+ "method"
-												+ methodNode.getName()
-												+ String.valueOf(j)
-												+ "ann"
-												+ String.valueOf(k)
-												+ ":"
-												+ StaticVariables.annotationNodeName
-												+ " {";
+														+ interfaceNode.getName()
+														+ String.valueOf(i)
+														+ "method"
+														+ methodNode.getName()
+														+ String.valueOf(j)
+														+ "ann"
+														+ String.valueOf(k)
+														+ ":"
+														+ StaticVariables.annotationNodeName
+														+ " {";
 										// Annotation node property
 										fileNodeInsertQuery += StaticVariables.nameAnnotationPropertyName
 												+ ":\'"
 												+ annotationNode.getName().replace("\'", "")//.replace("\"", "")
+												+ "\',";
+										fileNodeInsertQuery += StaticVariables.targetParameterPropertyName
+												+ ":\'"
+												+ "METHOD"
 												+ "\'";
 										//annotation add parameters as property
 										//   eg.   sequence:'[{key:"tag",value:"代码生成器"},{key:"config",value:"test"}]'
@@ -878,7 +1369,22 @@ public class Neo4JDriver {
 										fileNodeInsertQuery += "-[:"
 												+ StaticVariables.has_annotationPropertyName
 												+ "]->";
-										fileNodeInsertQuery += "(" 
+										fileNodeInsertQuery += "("
+												+ "interface"
+												+ interfaceNode.getName()
+												+ String.valueOf(i)
+												+ "method"
+												+ methodNode.getName()
+												+ String.valueOf(j) + "ann"
+												+ String.valueOf(k) + ")";
+
+										// RELATION SHIP FILE -> Annotation
+										fileNodeInsertQuery += ",(" + "f" + ")";
+
+										fileNodeInsertQuery += "-[:"
+												+ StaticVariables.has_annotationPropertyName
+												+ "]->";
+										fileNodeInsertQuery += "("
 												+ "interface"
 												+ interfaceNode.getName()
 												+ String.valueOf(i)
@@ -890,24 +1396,22 @@ public class Neo4JDriver {
 								}
 
 								// Parameter Node
-								if (methodNode.getParameters().size() > 0) {
-									for (int k = 0; k < methodNode
-											.getParameters().size(); k++) {
-										ParameterMethodNodeAST paramNode = methodNode
-												.getParameters().get(k);
+								if (methodNode.getParametersMethod().size() > 0) {
+									for (int k = 0; k < methodNode.getParametersMethod().size(); k++) {
+										ParameterNodeAST paramNode = methodNode.getParametersMethod().get(k);
 										fileNodeInsertQuery += ",(";
 										fileNodeInsertQuery +=
 												"interface"
-												+ interfaceNode.getName()
-												+ String.valueOf(i)
-												+ "method"
-												+ methodNode.getName()
-												+ String.valueOf(j)
-												+ "param"
-												+ String.valueOf(k)
-												+ ":"
-												+ StaticVariables.parameterNodeName
-												+ " {";
+														+ interfaceNode.getName()
+														+ String.valueOf(i)
+														+ "method"
+														+ methodNode.getName()
+														+ String.valueOf(j)
+														+ "param"
+														+ String.valueOf(k)
+														+ ":"
+														+ StaticVariables.parameterNodeName
+														+ " {";
 										// Parameter node property
 										fileNodeInsertQuery += StaticVariables.nameParameterPropertyName
 												+ ":\'"
@@ -916,6 +1420,10 @@ public class Neo4JDriver {
 										fileNodeInsertQuery += StaticVariables.typeParameterPropertyName
 												+ ":\'"
 												+ paramNode.getType()
+												+ "\',";
+										fileNodeInsertQuery += StaticVariables.targetParameterPropertyName
+												+ ":\'"
+												+ paramNode.getTarget()
 												+ "\'";
 										fileNodeInsertQuery += "})";
 
@@ -924,21 +1432,121 @@ public class Neo4JDriver {
 												+ "interface"
 												+ interfaceNode.getName()
 												+ String.valueOf(i)
-												//+ interfaceNode.getName()//多出来了一个getName！源代码自带错误
 												+ "method" + String.valueOf(j)
 												+ ")";
 
 										fileNodeInsertQuery += "-[:"
 												+ StaticVariables.has_parameterPropertyName
 												+ "]->";
-										fileNodeInsertQuery += "(" 
+										fileNodeInsertQuery += "("
 												+ "interface"
 												+ interfaceNode.getName()
 												+ String.valueOf(i)
 												+ "method"
 												+ methodNode.getName()
 												+ String.valueOf(j) + "param"
-												+ String.valueOf(k) + ")";
+												+ String.valueOf(k)
+												+ ")";
+
+										// parameter level annotation
+										List<AnnotationExpr> paramAnnotations = paramNode.getAnnotations();
+										if (paramAnnotations.size() > 0) {
+											for (int l = 0; l < paramAnnotations.size(); l ++) {
+												fileNodeInsertQuery += ",(";
+												fileNodeInsertQuery +=
+														"interface" + interfaceNode.getName() + String.valueOf(i)
+																+ "VARIABLEPARAM"
+																+ "parameter" + paramNode.getName()
+																+ "ann"
+																+ String.valueOf(j)
+																+ String.valueOf(k)
+																+ String.valueOf(l) + ":"
+																+ StaticVariables.annotationNodeName
+																+ " {";
+												// Annotation node property
+												AnnotationExpr annotationExprParam = paramAnnotations.get(l);
+												fileNodeInsertQuery += StaticVariables.nameAnnotationPropertyName
+														+ ":\'"
+														+ "@" + annotationExprParam.getName().toString().replace("\'", "")//.replace("\"", "|")    //将双引号变成|
+														+ "\',";
+												fileNodeInsertQuery += StaticVariables.targetParameterPropertyName
+														+ ":\'"
+														+ paramNode.getTarget()
+														+ "\'";
+												//annotation add parameters as property
+												// annotation's parameters
+												fileNodeInsertQuery += ","
+														+ StaticVariables.annotationParameterName
+														+ ":'[";
+												// first one is annotation itself
+												if (annotationExprParam.getChildrenNodes().size() > 1) {
+													for(int count=1; count < annotationExprParam.getChildrenNodes().size(); count++)
+													{
+														MemberValuePair memberValuePair = (MemberValuePair) annotationExprParam.getChildrenNodes().get(count);
+														fileNodeInsertQuery += "{"
+																+ StaticVariables.annotationParameterListKeyWord
+																+":"
+																+"\""
+																+ memberValuePair.getName()
+																+ "\""
+																+ ","
+																+ StaticVariables.annotationParameterListValueWord
+																+ ":"
+//														+ "\""
+																+ memberValuePair.getValue().toString()
+//														+ "\""
+																+ "}";
+														if(count != annotationExprParam.getChildrenNodes().size() - 1)
+														{
+															fileNodeInsertQuery+=",";
+														}
+													}
+												}
+												fileNodeInsertQuery += "]'";
+												fileNodeInsertQuery += "})";
+
+												// RELATION SHIP Parameter -> ANNOTATION
+												fileNodeInsertQuery += ",("
+														+ "interface"
+														+ interfaceNode.getName()
+														+ String.valueOf(i)
+														+ "method"
+														+ methodNode.getName()
+														+ String.valueOf(j)
+														+ "param"
+														+ String.valueOf(k)
+														+ ")";
+
+												fileNodeInsertQuery += "-[:"
+														+ StaticVariables.has_annotationPropertyName
+														+ "]->";
+												fileNodeInsertQuery += "(" +
+														"interface" + interfaceNode.getName() + String.valueOf(i)
+														+ "VARIABLEPARAM"
+														+ "parameter" + paramNode.getName()
+														+ "ann"
+														+ String.valueOf(j)
+														+ String.valueOf(k)
+														+ String.valueOf(l)
+														+ ")";
+
+												// RELATION SHIP FILE -> Annotation
+												fileNodeInsertQuery += ",(" + "f" + ")";
+
+												fileNodeInsertQuery += "-[:"
+														+ StaticVariables.has_annotationPropertyName
+														+ "]->";
+												fileNodeInsertQuery += "("
+														+ "interface" + interfaceNode.getName() + String.valueOf(i)
+														+ "VARIABLEPARAM"
+														+ "parameter" + paramNode.getName()
+														+ "ann"
+														+ String.valueOf(j)
+														+ String.valueOf(k)
+														+ String.valueOf(l) + ")";
+											}
+
+										}
 									}
 								}
 
@@ -951,14 +1559,14 @@ public class Neo4JDriver {
 										fileNodeInsertQuery += ",(";
 										fileNodeInsertQuery +=
 												"interface"
-												+ interfaceNode.getName()
-												+ String.valueOf(i)
-												+ "method"
-												+ methodNode.getName()
-												+ String.valueOf(j) + "throw"
-												+ String.valueOf(k) + ":"
-												+ StaticVariables.throwNodeName
-												+ " {";
+														+ interfaceNode.getName()
+														+ String.valueOf(i)
+														+ "method"
+														+ methodNode.getName()
+														+ String.valueOf(j) + "throw"
+														+ String.valueOf(k) + ":"
+														+ StaticVariables.throwNodeName
+														+ " {";
 										// Throw node property
 										fileNodeInsertQuery += StaticVariables.nameThrowPropertyName
 												+ ":\'"
@@ -977,7 +1585,7 @@ public class Neo4JDriver {
 										fileNodeInsertQuery += "-[:"
 												+ StaticVariables.has_throwPropertyName
 												+ "]->";
-										fileNodeInsertQuery += "(" 
+										fileNodeInsertQuery += "("
 												+ "interface"
 												+ interfaceNode.getName()
 												+ String.valueOf(i)

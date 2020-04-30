@@ -50,7 +50,7 @@ public class ASTCreator {
 
 	/**
 	 * We use CompilationUnit (from Javaparser project) to parse the File
-	 * 
+	 *
 	 * @param path_to_class
 	 * @return
 	 * @throws ParseException
@@ -153,7 +153,7 @@ public class ASTCreator {
 	 * @return
 	 */
 
-	public FileNodeAST getASTFileObject(String path_to_class,List<Project>pomList) {
+	public FileNodeAST getASTFileObject(String path_to_class,List<Project> pomList) {
 
 		FileNodeAST fileObject = null;
 		CompilationUnit cu;
@@ -175,6 +175,7 @@ public class ASTCreator {
 
 			fileObject.setClasses(ast.getClassVisitor().getClasses());
 			fileObject.setInterfaces(ast.getClassVisitor().getInterfaces());
+			fileObject.setImports(cu.getImports());
 		}
 		return fileObject;
 	}
@@ -235,7 +236,8 @@ public class ASTCreator {
 
 
 	public static void main(String[] args) {
-		PropertyConfigurator.configure("resources/log4j.properties");
+		String projectPath = System.getProperty("user.dir");
+		PropertyConfigurator.configure(projectPath + "/src/main/resources/log4j.properties");
 		// args[0] -> Path to Java Project
 		List<String> classes = RecursivelyProjectJavaFiles
 				.getProjectJavaFiles(args[0]);

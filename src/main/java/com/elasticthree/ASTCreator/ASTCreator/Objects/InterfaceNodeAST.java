@@ -1,5 +1,8 @@
 package com.elasticthree.ASTCreator.ASTCreator.Objects;
 
+import com.github.javaparser.ast.TypeParameter;
+import com.github.javaparser.ast.body.FieldDeclaration;
+
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +23,7 @@ public class InterfaceNodeAST {
 	private List<AnnotationNodeAST> annotatios;
 	private List<CommentsNodeAST> comments;
 	private List<InterfaceHasMethodNodeAST> method;
+	private List<FieldDeclaration> classChildClass;
 
 	public InterfaceNodeAST(String repoURL, String name, String packageName) {
 		setRepoURL(repoURL);
@@ -36,9 +40,9 @@ public class InterfaceNodeAST {
 		annotatios = new ArrayList<AnnotationNodeAST>();
 		comments = new ArrayList<CommentsNodeAST>();
 		setMethod(new ArrayList<InterfaceHasMethodNodeAST>());
-		
+		classChildClass = new ArrayList<FieldDeclaration>();
 	}
-	
+
 	public String getRepoURL() {
 		return repoURL;
 	}
@@ -142,7 +146,7 @@ public class InterfaceNodeAST {
 	public void setComments(List<CommentsNodeAST> comments) {
 		this.comments = comments;
 	}
-	
+
 	public void setAllModifiers(int mod){
 		if (Modifier.isFinal(mod)) {
 			hasFinalModifier = true;
@@ -174,12 +178,12 @@ public class InterfaceNodeAST {
 	public void setMethod(List<InterfaceHasMethodNodeAST> method) {
 		this.method = method;
 	}
-	
+
 	@Override
 	public String toString(){
-		String to_string = "[ \'repoURL: " + repoURL + "\', \'Package : " 
-				+ packageName + "\', \'Name: " + name  
-				+ "\', \'NumberOfMethods: " + numberOfMethods 
+		String to_string = "[ \'repoURL: " + repoURL + "\', \'Package : "
+				+ packageName + "\', \'Name: " + name
+				+ "\', \'NumberOfMethods: " + numberOfMethods
 				+ "\', \'HasFinalModifier : " + hasFinalModifier
 				+ "\', \'HasAbstractModifier : " + hasAbstractModifier
 				+ "\', \'HasPrivateModifier : " + hasPrivateModifier
@@ -191,15 +195,25 @@ public class InterfaceNodeAST {
 		if (annotatios.size() != 0 )
 			for(int i=0; i<annotatios.size(); i++)
 				to_string += "\n" + annotatios.get(i).toString();
-		
+
 		if (comments.size() != 0 )
 			for(int i=0; i<comments.size(); i++)
 				to_string += "\n" + comments.get(i).toString();
-		
+
 		if (method.size() != 0 )
 			for(int i=0; i<method.size(); i++)
 				to_string += "\n" + method.get(i).toString();
 
 		return to_string;
+	}
+
+	public void setChildClasses(List<FieldDeclaration> childClass){
+		this.classChildClass = childClass;
+
+
+	}
+	public List<FieldDeclaration> getChildClasses(){
+		return classChildClass;
+
 	}
 }

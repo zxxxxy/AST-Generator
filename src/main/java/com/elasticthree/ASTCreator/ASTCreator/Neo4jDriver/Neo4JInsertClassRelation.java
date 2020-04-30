@@ -4,7 +4,7 @@ import com.elasticthree.ASTCreator.ASTCreator.Helpers.StaticVariables;
 import com.elasticthree.ASTCreator.ASTCreator.Objects.*;
 
 import org.apache.log4j.Logger;
-import org.neo4j.driver.v1.*;
+import org.neo4j.driver.*;
 
 import java.io.Console;
 import java.io.FileInputStream;
@@ -35,7 +35,8 @@ public class Neo4JInsertClassRelation {
         InputStream input = null;
 
         try {
-            input = new FileInputStream("resources/config.properties");
+            String projectPath = System.getProperty("user.dir");
+            input = new FileInputStream(projectPath + "/src/main/resources/config.properties");
             prop.load(input);
             this.host = prop.getProperty("host");
             this.usern = prop.getProperty("neo4j_username");
@@ -117,8 +118,8 @@ public class Neo4JInsertClassRelation {
                                 .get(i);
                         //////////////////////
                         // RELATION SHIP CLASS EXTEND
-						if (!classNode.getExtendsClass().equalsIgnoreCase(
-								"None")) {
+                        if (!classNode.getExtendsClass().equalsIgnoreCase(
+                                "None")) {
 
 //                                CQL语法:
 //                            Match(thisClass:Class),(extendClass:Class)
@@ -126,12 +127,12 @@ public class Neo4JInsertClassRelation {
 //                            CREATE(thisClass)-[extendRelationship:EXTENDS]->(extendClass)
 //                            RETURN extendRelationship;
 
-							fileNodeInsertQuery +="Match(thisClass:Class),(extendClass:Class)\n" +
+                            fileNodeInsertQuery +="Match(thisClass:Class),(extendClass:Class)\n" +
                                     "WHERE thisClass.name=\""
-							+ classNode.getName()
-							+ "\" AND extendClass.name=\""
-							+ classNode.getExtendsClass()
-							+ "\" \n" +
+                                    + classNode.getName()
+                                    + "\" AND extendClass.name=\""
+                                    + classNode.getExtendsClass()
+                                    + "\" \n" +
                                     "CREATE UNIQUE (thisClass)-[extendRelationship:EXTENDS]->(extendClass)\n" +
                                     "RETURN extendRelationship;";
 
@@ -145,11 +146,11 @@ public class Neo4JInsertClassRelation {
                                 fileNodeInsertQuery = "";
                             }
 
-						}
+                        }
 
 
-						List<String> d = classNode.getDependencyClasses();
-						if(classNode.getDependencyClasses().size()!=0)
+                        List<String> d = classNode.getDependencyClasses();
+                        if(classNode.getDependencyClasses().size()!=0)
                         {
                             for(int j=0;j<classNode.getDependencyClasses().size();j++)
                             {
@@ -181,8 +182,8 @@ public class Neo4JInsertClassRelation {
 
 
 
-						// Add method parameter type node
-						// Method Node
+                        // Add method parameter type node
+                        // Method Node
                         if(classNode.getMethod().size()>0){
                             for(int j=0;j<classNode.getMethod().size();j++){
                                 ClassHasMethodNodeAST methodNode = classNode.getMethod().get(j);

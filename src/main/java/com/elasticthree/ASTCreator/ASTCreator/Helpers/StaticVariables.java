@@ -9,6 +9,7 @@ public class StaticVariables {
 	public static final String numberOfClassesPropertyName = "numberOfClasses";
 	public static final String numberOfInterfacesPropertyName = "numberOfInterfaces";
 	public static final String classNodeName = "Class";
+	public static final String importNodeName = "Import";
 	public static final String extendsClassPropertyName = "extends";
 	public static final String numberOfMethodsClassPropertyName = "numberOfMethods";
 	public static final String packageClassPropertyName = "package";
@@ -26,36 +27,38 @@ public class StaticVariables {
 	public static final String parameterNodeName = "Parameter";
 	public static final String nameParameterPropertyName = "name";
 	public static final String typeParameterPropertyName = "type";
+	public static final String targetParameterPropertyName = "target";
 	public static final String has_parameterPropertyName = "HAS_PARAMETER";
 	public static final String throwNodeName = "Throw";
 	public static final String nameThrowPropertyName = "name";
 	public static final String has_throwPropertyName = "HAS_THROW";
 	public static final String has_methodPropertyName = "HAS_METHOD";
 	public static final String has_classPropertyName = "HAS_CLASS";
+	public static final String has_importPropertyName = "HAS_IMPORT";
 	public static final String has_classExtend = "EXTENDS";
-	public static final String annotationParameterName = "sequence";
+	public static final String annotationParameterName = "parameters";
 	public static final String annotationParameterListKeyWord="key";
 	public static final String annotationParameterListValueWord="value";
 
 	////////////////
 	// Interfaces //
 	////////////////
-	
-	
+
+
 	public static final String interfaceNodeName = "Interface";
 	public static final String packageInterfacePropertyName = "package";
 	public static final String nameInterfacePropertyName = "name";
 	public static final String has_interfacePropertyName = "HAS_INTERFACE";
-	
+
 	//////////
 	// REPO //
 	//////////
-	
+
 	public static final String repoNodeName = "Repo";
 	public static final String URLRepoPropertyName = "repoURL";
 	public static final String linesOfJavaCodeRepoPropertyName = "linesOfJavaCode";
 
-	
-	
+
+
 
 }

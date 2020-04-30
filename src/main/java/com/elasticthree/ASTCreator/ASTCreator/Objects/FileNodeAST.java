@@ -1,5 +1,7 @@
 package com.elasticthree.ASTCreator.ASTCreator.Objects;
 
+import com.github.javaparser.ast.ImportDeclaration;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,6 +16,7 @@ public class FileNodeAST {
 	private List<InterfaceNodeAST> interfaces;
 	private String absPathToFile;
 	private String artifactId;
+	private List<ImportDeclaration> imports;
 
 	public FileNodeAST(String repoURL, String absPathToFile,
 			String packageName, long numberOfClasses, long numberOfInterfaces) {
@@ -122,5 +125,13 @@ public class FileNodeAST {
 
 	public void setRepoURL(String repoURL) {
 		this.repoURL = repoURL;
+	}
+
+	public List<ImportDeclaration> getImports() {
+		return imports;
+	}
+
+	public void setImports(List<ImportDeclaration> imports) {
+		this.imports = imports;
 	}
 }

@@ -1,6 +1,8 @@
 package com.elasticthree.ASTCreator.ASTCreator.Objects;
 
+import com.github.javaparser.ast.TypeParameter;
 import com.github.javaparser.ast.body.FieldDeclaration;
+import com.github.javaparser.ast.body.VariableDeclarator;
 import com.github.javaparser.ast.type.Type;
 
 import java.util.ArrayList;
@@ -254,7 +256,7 @@ public class ClassNodeAST {
 	public void setMethod(List<ClassHasMethodNodeAST> method) {
 		this.method = method;
 	}
-	
+
 	public void setAllModifiers(int mod){
 		if (Modifier.isFinal(mod)) {
 			hasFinalModifier = true;
@@ -279,12 +281,12 @@ public class ClassNodeAST {
 		}
 	}
 
-	
+
 	@Override
 	public String toString(){
-		String to_string = "[ \'repoURL: " + repoURL + "\', \'Package : " + packageName + "\', \'Name: " 
-				+ name  
-				+ "\', \'ExtendsClass: " + extendsClass 
+		String to_string = "[ \'repoURL: " + repoURL + "\', \'Package : " + packageName + "\', \'Name: "
+				+ name
+				+ "\', \'ExtendsClass: " + extendsClass
 				+ "\', \'NumberOfMethods : " + numberOfMethods
 				+ "\', \'HasFinalModifier : " + hasFinalModifier
 				+ "\', \'HasAbstractModifier : " + hasAbstractModifier
@@ -297,20 +299,20 @@ public class ClassNodeAST {
 		if (annotations.size() != 0 )
 			for(int i = 0; i< annotations.size(); i++)
 				to_string += "\n" + annotations.get(i).toString();
-		
+
 		if (comments.size() != 0 )
 			for(int i=0; i<comments.size(); i++)
 				to_string += "\n" + comments.get(i).toString();
-		
+
 		if (impl.size() != 0 )
 			for(int i=0; i<impl.size(); i++)
 				to_string += "\n" + impl.get(i).toString();
-		
+
 		if (method.size() != 0 ){
 			for(int i=0; i<method.size(); i++)
 				to_string += "\n" + method.get(i).toString();
 		}
-		
+
 		return to_string;
 	}
 

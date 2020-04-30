@@ -1,5 +1,6 @@
 package com.elasticthree.ASTCreator.ASTCreator.Objects;
 
+import com.github.javaparser.ast.TypeParameter;
 import com.github.javaparser.ast.stmt.ExpressionStmt;
 import com.github.javaparser.ast.stmt.Statement;
 
@@ -8,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ClassHasMethodNodeAST {
-	
+
 	private String id;
 	private String name;
 	private String packageName;
@@ -25,8 +26,9 @@ public class ClassHasMethodNodeAST {
 	private List<ParameterMethodNodeAST> parameters;
 	private List<ThrowMethodNodeAST> throwsMethod;
 	private List<String> childClass = new ArrayList<String>();
+	private List<ParameterNodeAST> parametersInMethod;
 
-	
+
 	public ClassHasMethodNodeAST(String name, String packageName) {
 		this.setId(packageName + "-MethodNodeFromClass-" + name);
 		this.name = name;
@@ -43,6 +45,7 @@ public class ClassHasMethodNodeAST {
 		setComments(new ArrayList<CommentsNodeAST>());
 		setParameters(new ArrayList<ParameterMethodNodeAST>());
 		setThrowsMethod(new ArrayList<ThrowMethodNodeAST>());
+		setParametersInMethod(new ArrayList<ParameterNodeAST>());
 	}
 
 	public void setAllModifiers(int mod){
@@ -68,7 +71,7 @@ public class ClassHasMethodNodeAST {
 			hasStaticModifier = true;
 		}
 	}
-	
+
 	public String getName() {
 		return name;
 	}
@@ -196,11 +199,11 @@ public class ClassHasMethodNodeAST {
 	public List<String> getMethodChildClass(){
 		return this.childClass;
 	}
-	
+
 	@Override
 	public String toString(){
-		String to_string = " METHOD_CLASS -> [ \'ID: " + id + "\', \'Package : " 
-				+ packageName + "\', \'Name: " + name  
+		String to_string = " METHOD_CLASS -> [ \'ID: " + id + "\', \'Package : "
+				+ packageName + "\', \'Name: " + name
 				+ "\', \'ReturningType: " + returningType
 				+ "\', \'HasFinalModifier : " + hasFinalModifier
 				+ "\', \'HasAbstractModifier : " + hasAbstractModifier
@@ -213,20 +216,28 @@ public class ClassHasMethodNodeAST {
 		if (annotatios.size() != 0 )
 			for(int i=0; i<annotatios.size(); i++)
 				to_string += "\n" + annotatios.get(i).toString();
-		
+
 		if (comments.size() != 0 )
 			for(int i=0; i<comments.size(); i++)
 				to_string += "\n" + comments.get(i).toString();
-		
+
 		if (parameters.size() != 0 )
 			for(int i=0; i<parameters.size(); i++)
 				to_string += "\n" + parameters.get(i).toString();
-		
+
 		if (throwsMethod.size() != 0 )
 			for(int i=0; i<throwsMethod.size(); i++)
 				to_string += "\n" + throwsMethod.get(i).toString();
-		
+
 		return to_string;
+	}
+
+	public List<ParameterNodeAST> getParametersMethod() {
+		return parametersInMethod;
+	}
+
+	public void setParametersInMethod(List<ParameterNodeAST> parametersInMethod) {
+		this.parametersInMethod = parametersInMethod;
 	}
 
 }
